@@ -1,3 +1,5 @@
 .idea
 .mise.toml
 __pycache__
+
+.dataset
