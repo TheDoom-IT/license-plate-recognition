@@ -23,8 +23,8 @@ def coco_to_darknet(src, dst):
             with open(os.path.join(dst_path, f"{new_file_name}.txt"), "w") as f:
                 x, y, w, h = annotation["bbox"]
 
-                x = ((x+w)/2)/image["width"]
-                y = ((y+h)/2)/image["height"]
+                x = (x+w//2)/image["width"]
+                y = (y+h//2)/image["height"]
                 w = w/image["width"]
                 h = h/image["height"]
 
