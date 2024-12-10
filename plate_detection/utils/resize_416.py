@@ -134,6 +134,9 @@ def resize_dataset(dataset_path):
     :param dataset_path: Path to the dataset folder.
     """
     for country in os.listdir(dataset_path):
+        if not os.path.isdir(os.path.join(dataset_path, country)):
+            continue
+    
         for part in DATASET_PARTS:
             if not os.path.exists(os.path.join(dataset_path, country, part)):
                 continue
