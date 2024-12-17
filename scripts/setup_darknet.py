@@ -97,10 +97,9 @@ def main(*args, **kwargs):
     print(f"[*] Cloning dark-net from `https://github.com/AlexeyAB/darknet`.")
     subprocess.run(["git", "clone", "https://github.com/AlexeyAB/darknet", '.darknet'])
 
-    install_linux(os.path.join(BASE_DIR, ".darknet"), use_gpu=args.gpu)
-    exit()
-    if platform.system() == "Windows":
-        print("[*] Installing on windows", args.gpu)
-        install_win(os.path.join(BASE_DIR, ".darknet"), use_gpu=args.gpu)
-    elif platform.system() == "Linux":
-        install_linux(os.path.join(BASE_DIR, ".darknet"), use_gpu=args.gpu)
+    
+    # if platform.system() == "Windows":
+    #     print("[*] Installing on windows", args.gpu)
+    #     install_win(os.path.join(BASE_DIR, ".darknet"), use_gpu=args.gpu)
+    # elif platform.system() == "Linux":
+    #     install_linux(os.path.join(BASE_DIR, ".darknet"), use_gpu=args.gpu)
