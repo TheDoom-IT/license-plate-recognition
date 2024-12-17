@@ -5,6 +5,7 @@ from PIL import Image
 
 import shutil
 import json
+import numpy as np
 from dataclasses import dataclass
 
 
@@ -97,7 +98,7 @@ class PlateDetectionService:
         return round(x1), round(y1), round(x2), round(y2)
     
         
-    def detect(self) -> tuple[Image.Image, Box]:
+    def detect(self) -> tuple[np.array, Box]:
         # TODO: implement plate detection
         command = [
             'darknet.exe', 
@@ -135,5 +136,6 @@ class PlateDetectionService:
         x1, y1, x2, y2 = self.get_true_bbox([x1, y1, x2, y2])
         
         plate = self.image.crop((x1, y1, x2, y2))
+        plate = np.array(plate)
 
         return plate, Box(x1, y1, x2, y2, float(box["confidence"]))
