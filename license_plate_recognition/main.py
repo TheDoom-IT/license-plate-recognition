@@ -29,11 +29,11 @@ if __name__ == '__main__':
     filename = sys.argv[1]
     img = read_file(filename)
 
-    plate_detection_service = PlateDetectionService()
+    plate_detection_service = PlateDetectionService(filename)
     segmentation_service = SegmentationService()
     recognition_service = RecognitionService()
 
-    plate, box = plate_detection_service.detect(img)
+    plate, box = plate_detection_service.detect()
     characters = segmentation_service.segment(plate)
     plate_number = recognition_service.recognize(characters)
 
