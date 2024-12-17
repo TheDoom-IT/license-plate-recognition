@@ -15,7 +15,25 @@ To install all dependencies run the following commands:
 poetry install
 ```
 
-After installing the Python package, clone the **Darknet** repository by running::
+After installing the Python package, You need to extract [extras.zip](https://drive.google.com/file/d/1LHBDSbSFVhdKbvgZ_74m8OmUoxJ-Yow6/view?usp=sharing) file
+to the root directory of the project.This contains the weights and dataset folder which is not
+included in the code. you need to have directory structure like this:
+
+```
+license-plate-recognition/
+|   poetry.lock
+|   pyproject.toml
+|   .gitignore
+|   README.md
+|___.dataset/   <-- HERE
+|___.weights/  <-- HERE
+|___character_segmentation/
+|___license-plate-recognition/
+|___plate_detection/
+|___scripts/
+```
+
+Then you need to the clone the **Darknet** repository by running::
 
 ```bash
 poetry run setup-darknet
