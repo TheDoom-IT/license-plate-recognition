@@ -5,6 +5,15 @@ downloaded from [here](https://python-poetry.org/).
 
 Poetry handles all of your dependencies and virtual environments.
 
+## Running the project
+The application can be run using the following command:
+```bash
+# Run the project
+poetry run python -m license_plate_recognition.main <path_to_image>
+```
+
+The application will read an image from the specified path and display the license plate number present in the image.
+
 ## Project setup
 
 The project requires Python 3.10 and Poetry to work.
@@ -74,14 +83,7 @@ The steps are also visually described in the image below.
 
 ![steps](scripts/visual-studio.jpg)
 
-After successful completion of the build we run the application use the following command:
-
-```bash
-# Run the project
-poetry run python -m license_plate_recognition.main <path_to_image>
-```
-
-The application will read an image from the specified path and display the license plate number present in the image.
+Now you are ready to run the project.
 
 ---
 
