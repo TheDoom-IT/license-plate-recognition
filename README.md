@@ -81,10 +81,6 @@ After successful completion of the build we run the application use the followin
 poetry run python -m license_plate_recognition.main <path_to_image>
 ```
 
-The application will read the image from the given path and display license plate number present on the image.
-
-Here is the refactored version in Markdown:
-
 The application will read an image from the specified path and display the license plate number present in the image.
 
 ---
