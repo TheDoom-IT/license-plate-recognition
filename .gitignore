@@ -7,4 +7,5 @@ __pycache__
 .weights
 
 .DS_Store
+.ipynb_checkpoints
 license_plate_recognition/recognition/data
