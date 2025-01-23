@@ -12,6 +12,7 @@ class YoloLoss(tf.keras.losses.Loss):
     def call(self, predictions, target):
         obj = target[..., 4] == 1
         noobj = target[..., 4] == 0
+        has_obj = tf.reduce_any(obj)
 
         # For No Object Loss
         no_object_loss = self.bce(
@@ -29,6 +30,7 @@ class YoloLoss(tf.keras.losses.Loss):
         object_loss = self.mse(
             ious * target[..., 4:5][obj], tf.sigmoid(predictions[..., 4:5][obj])
         )
+        object_loss = tf.cond(has_obj, lambda: object_loss, lambda: 0.0)
 
         # For Box Coordinates Loss
         box_predictions = tf.concat([
@@ -43,10 +45,12 @@ class YoloLoss(tf.keras.losses.Loss):
         box_loss = self.mse(
             target_box[..., :4][obj], box_predictions[..., :4][obj]
         )
+        box_loss = tf.cond(has_obj, lambda: box_loss, lambda: 0.0)
 
         # For Class Loss
         class_loss = self.entropy(
             target[..., 5][obj], predictions[..., 5:][obj]
         )
+        class_loss = tf.cond(has_obj, lambda: class_loss, lambda: 0.0)
 
         return class_loss + box_loss + object_loss + no_object_loss
