@@ -7,6 +7,7 @@ from plate_detection.yolo.const import (
     ANCHORS_MASKS, 
     NMS_IOU_THRESH, 
     CONF_THRESHOLD,
+    DARKNET_LAYERS
 )
 import numpy as np
 from PIL.Image import Image
@@ -318,14 +319,24 @@ def load_yolo_weights(file_path, model, yolo_layers):
 
 def load_image_as_tf(image):
     if isinstance(image, np.ndarray) or isinstance(image, Image):
-        return tf.image.resize(tf.expand_dims(tf.convert_to_tensor(image), axis=0) / 255, (IMAGE_SIZE, IMAGE_SIZE))
-    elif isinstance(image, str):        
-        return tf.image.resize(
-            tf.expand_dims(tf.image.decode_image(open(image, 'rb').read(), channels=3), axis=0) / 255,
-            (IMAGE_SIZE, IMAGE_SIZE),
+        image = tf.convert_to_tensor(image)
+
+        return image.shape[:2].as_list(), tf.image.resize(tf.expand_dims(image, axis=0) / 255, (IMAGE_SIZE, IMAGE_SIZE))
+    elif isinstance(image, str):  
+        image = tf.image.decode_image(open(image, 'rb').read(), channels=3)
+        return image.shape[:2].as_list(), tf.image.resize(
+            tf.expand_dims(image, axis=0) / 255, (IMAGE_SIZE, IMAGE_SIZE),
         )
     else:
         raise ValueError(f"Can't process this param: {type(image)}")
+
+
+def get_original_bbox(scale, bbox):
+    hscale, wscale= np.asarray(scale) / IMAGE_SIZE
+    x1, y1, x2, y2 = bbox
+    return np.array([x1 * wscale, y1 * hscale, x2 * wscale, y2 * hscale], dtype=np.int32)
+
+
 
 
 def get_bboxes(outputs):
@@ -436,3 +447,9 @@ def mean_average_precision(predictions, true_values, iou_threshold, box_format="
 
     
     return sum(average_precision) / len(average_precision)
+
+
+def freeze_darknet_layers(model):
+    for layers in DARKNET_LAYERS:
+        model.get_layer(layers).trainable = False
+    return model

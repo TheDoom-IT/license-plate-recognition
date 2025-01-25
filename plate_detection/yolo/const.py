@@ -19,7 +19,8 @@ ANCHORS = [
 ANCHORS_MASKS = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
 
 CLASSES = ["license-plate"]
-YOLO_LAYERS = [
+
+DARKNET_LAYERS = [
     "DarkNet_Conv2D_0",
     "DarkNet_Conv2D_1",
     "DarkNet_Residual_1",
@@ -31,6 +32,8 @@ YOLO_LAYERS = [
     "DarkNet_Residual_skip2",
     "DarkNet_Conv2D_5",
     "DarkNet_Residual_3",
+]
+YOLO_LAYERS = DARKNET_LAYERS + [
     "Yolo_Conv2D_0",
     "Yolo_Conv2D_1",
     "Yolo_Residual_1",
