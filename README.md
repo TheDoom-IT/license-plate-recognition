@@ -2,8 +2,37 @@
 
 This project was created using Poetry. It can be
 downloaded from [here](https://python-poetry.org/).
-
 Poetry handles all of your dependencies and virtual environments.
+
+## Project setup
+
+The project requires Python 3.10.x and Poetry 1.8.x to work.
+1. Install Python 3.10.x from [here](https://www.python.org/downloads/).
+2. Install Poetry 1.8.x from [here](https://python-poetry.org/docs/1.8/).
+3. Install dependencies running the following commands:
+    ```bash
+    poetry install
+    ```
+4. Download weights required to run plate detection and recognition models.
+    You can download them from [here](https://drive.google.com/file/d/1KzqjkfQSQEKHL-vWejDEkhcVQibAKTYu/view?usp=sharing).
+    Place them in the `.weights` directory.
+5. (Optional) Download the dataset used to train the models.
+    You can download it from [here](https://drive.google.com/file/d/1eHPUN2NzDRs4menl6IeKkKJboXPTckzR/view?usp=sharing).
+    Place them in the `.dataset` directory.
+
+After those steps your codebase should have the following structure:
+```
+license-plate-recognition/
+|-- .gitignore
+|-- .dataset/  <-- HERE
+|-- .weights/  <-- HERE
+|   |-- yolov3-custom_final.weights
+|   |-- recognition_model.keras
+|-- README.md
+|-- license-plate-recognition/
+|-- poetry.lock
+|-- pyproject.toml
+```
 
 ## Running the project
 
@@ -12,39 +41,11 @@ The application can be run using the following command:
 ```bash
 # Run the project
 poetry run python -m license_plate_recognition.main <path_to_image>
+# Example
+poetry run python -m license_plate_recognition.main example1.jpg
 ```
 
 The application will read an image from the specified path and display the license plate number present in the image.
-
-## Project setup
-
-The project requires Python 3.10 and Poetry to work.
-To install all dependencies run the following commands:
-
-```bash
-# 1.  Install dependencies
-poetry install
-```
-
-After installing the Python package, You need to extract [extras.zip](https://drive.google.com/file/d/1LHBDSbSFVhdKbvgZ_74m8OmUoxJ-Yow6/view?usp=sharing) file
-to the root directory of the project.This contains the weights and dataset folder which is not
-included in the code. you need to have directory structure like this:
-
-```
-license-plate-recognition/
-|   poetry.lock
-|   pyproject.toml
-|   .gitignore
-|   README.md
-|___.dataset/   <-- HERE
-|___.weights/  <-- HERE
-|___character_segmentation/
-|___license-plate-recognition/
-|___plate_detection/
-|___scripts/
-```
-
-All set? Execute the above command and watch our project come to life!
 
 ## Virtual environment
 
