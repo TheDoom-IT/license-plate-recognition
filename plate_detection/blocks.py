@@ -11,11 +11,11 @@ class CNNBlock(tf.keras.layers.Layer):
         super().__init__(name=name)
         self.padding = tf.keras.layers.ZeroPadding2D(((1, 0), (1, 0)))
         self.conv = tf.keras.layers.Conv2D(
-            out_channels, 
-            strides=strides, 
+            out_channels,
+            strides=strides,
             padding="same" if strides == 1 else "valid",
-            use_bias=not has_bn, 
-            kernel_regularizer=tf.keras.regularizers.l2(0.0005), 
+            use_bias=not has_bn,
+            kernel_regularizer=tf.keras.regularizers.l2(0.0005),
             **kwargs,
         )
         self.bn = tf.keras.layers.BatchNormalization()
@@ -31,6 +31,10 @@ class CNNBlock(tf.keras.layers.Layer):
             x = self.bn(x)
             x = self.leaky_relu(x)
         return x
+
+    def build(self):
+        """Required to disable warnings"""
+        pass
 
 
 class ResidualBlock(tf.keras.layers.Layer):
@@ -54,8 +58,12 @@ class ResidualBlock(tf.keras.layers.Layer):
             if self.use_residual:
                 x = self.add([x, layer(x)])
             else:
-                x = layer(x)        
+                x = layer(x)
         return x
+
+    def build(self):
+        """Required to disable warnings"""
+        pass
 
 class ScalePrediction(tf.keras.layers.Layer):
     def __init__(self, in_channels, num_classes, name="Output") -> None:
@@ -70,9 +78,9 @@ class ScalePrediction(tf.keras.layers.Layer):
     def call(self, inputs):
         output = self.prediction(inputs)
         output = tf.keras.layers.Reshape((output.shape[1], output.shape[2], 3, self.num_classes + 5))(output)
-        
+
         return output
-  
+
 
 class YoloV3:
     def __init__(self, in_channels=3, num_classes=20):
@@ -94,17 +102,17 @@ class YoloV3:
 
             if idx in self.skip_connection_idx:
                 skip_connections.append(x)
-            
+
             elif isinstance(layer, tf.keras.layers.UpSampling2D):
                 x = tf.keras.layers.Concatenate()([x, skip_connections.pop()])
-        
+
         return tf.keras.Model(inputs, outputs, name="YoloV3")
 
     def create_conv_layers(self):
 
         layers = [
             # Darknet layers
-            
+
             # batch_normalize=1; filters=32; size=3; stride=1; pad=1; activation=leaky
             CNNBlock(32, kernel_size=(3, 3), name="DarkNet_Conv2D_0"),
             # batch_normalize=1; filters=64; size=3; stride=2; pad=1; activation=leaky
