@@ -10,13 +10,13 @@ python = "^3.10"
 opencv-python = "^4.10.0.84"
 pillow = "^11.0.0"
 ipykernel = "^6.29.5"
-torch = "^2.5.1"
-torchvision = "^0.20.1"
-torchaudio = "^2.5.1"
 matplotlib = "^3.9.3"
 scikit-learn = "^1.5.2"
 keras = "^3.7.0"
 tensorflow = "^2.18.0"
+albumentations = "^2.0.0"
+tqdm = "^4.67.1"
+pydot = "^3.0.4"
 
 
 [tool.poetry.group.dev.dependencies]

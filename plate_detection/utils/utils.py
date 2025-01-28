@@ -92,9 +92,3 @@ def convert_coco_to_darknet(path, dst, anotation, src_image):
     store_labels(path, file_names, dtype="test")
 
 
-
-
-src = os.path.join(BASE_DIR, DATASET_BASE_PATH, "polish_coco")
-dst = os.path.join(BASE_DIR, DATASET_BASE_PATH, "polish")
-
-convert_coco_to_darknet(src, dst, "annotations.xml", "photos")

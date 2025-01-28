@@ -48,11 +48,11 @@ if __name__ == '__main__':
     filename = sys.argv[1]
     img = read_file(filename)
 
-    plate_detection_service = PlateDetectionService(filename)
+    plate_detection_service = PlateDetectionService()
     segmentation_service = SegmentationService()
     recognition_service = RecognitionService()
 
-    plate, box = plate_detection_service.detect()
+    plate, box = plate_detection_service.detect(img)
     characters = segmentation_service.segment(plate)
     if len(characters) == 0:
         print("No characters found")
