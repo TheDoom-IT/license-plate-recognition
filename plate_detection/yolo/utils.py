@@ -86,7 +86,7 @@ def cell_to_bboxes(predictions, anchors, output_scale, is_inference):
         anchors = tf.reshape(anchors, shape=(1, 1, 1, num_anchors, 2))
         x = tf.sigmoid(x)
         y = tf.sigmoid(y)
-        scale = tf.exp(scale) * anchors
+        scale = tf.exp(scale) * anchors * output_scale
         score = tf.sigmoid(predictions[..., 4:5])
         _class = tf.expand_dims(tf.cast(tf.argmax(predictions[..., 5:], axis=-1), dtype=x.dtype), -1)
     else:
@@ -102,7 +102,8 @@ def cell_to_bboxes(predictions, anchors, output_scale, is_inference):
 
     x = (1 / output_scale) * (x + grid)
     y = (1 / output_scale) * (y + tf.transpose(grid, [0, 2, 1, 3, 4]))
-   
+    scale = (1 / output_scale) * scale
+
     return tf.reshape(
         tf.concat([_class, score, x, y, scale], axis=-1), 
         (predictions.shape[0], num_anchors * output_scale * output_scale, 6)
@@ -379,6 +380,7 @@ def get_bboxes(outputs, is_inference=True):
         return box, _class, score
     else:
         return nms
+    
 
 
 
@@ -424,17 +426,13 @@ def mean_average_precision(predictions, true_values, iou_threshold, num_classes=
 
         true_value_mask = true_values[..., 1] == float(_class)
         ground_truths = true_values[true_value_mask]
-        #detections = [prediction for prediction in predictions if prediction[1] == _class]
-        #ground_truths = [true_value for true_value in true_values if true_value[1] == _class]
-
+        
         amount_bboxes = Counter(ground_truths[:, 0].astype(int))
-        # train_ids, _ freq = tf.unique_with_counts(ground_truths[..., 0])
         for key, value in amount_bboxes.items():
             amount_bboxes[key] = np.zeros(amount_bboxes[key])
         
         detection_idxs = np.argsort(detections[:, 2])[::-1]
         detections = detections[detection_idxs]
-        #detections.sort(key=lambda x: x[2], reverse=True)
         true_positives = np.zeros(len(detections))
         false_positives = np.zeros(len(detections))
         total_true_bboxes = len(ground_truths)
@@ -442,8 +440,6 @@ def mean_average_precision(predictions, true_values, iou_threshold, num_classes=
         for i, detection in enumerate(detections):
             gt_mask = ground_truths[:, 0] == detection[0]
             ground_truth_im = ground_truths[gt_mask]
-            
-            #ground_truth_im= [gt for gt in ground_truths if gt[0] == detection[0]]
 
             best_iou = 0
             best_gt_idx = -1

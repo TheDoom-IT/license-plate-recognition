@@ -99,7 +99,7 @@ class YoloDataset:
                 if not anchor_taken and not has_anchors[scale_idx]:
                     targets[scale_idx][j, i, anchor_on_scale, 4] = 1
                     x_cell, y_cell = S*x - i, S*y - j
-                    width_cell, height_cell = (w, h)
+                    width_cell, height_cell = (w * S, h * S)
 
                     box_coords = np.array([x_cell, y_cell, width_cell, height_cell])
                     targets[scale_idx][j, i, anchor_on_scale, :4] = box_coords 
