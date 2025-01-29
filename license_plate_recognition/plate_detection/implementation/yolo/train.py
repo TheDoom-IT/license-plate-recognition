@@ -3,30 +3,25 @@ import argparse
 import tensorflow as tf
 import numpy as np
 from tqdm import tqdm
-from plate_detection.blocks import YoloV3
-from plate_detection.utils.utils import mean_average_precision
-from plate_detection.yolo.const import (
+from ..blocks import YoloV3
+from .utils import mean_average_precision
+from .const import (
     LEARNING_RATE,
     WEIGHT_DECAY,
     ANCHORS,
     ANCHORS_MASKS,
-    SCALES,
     NUM_EPOCHS,
     NMS_IOU_THRESH,
     CONF_THRESHOLD,
     SAVE_MODEL,
-    BATCH_SIZE,
 )
-from plate_detection.yolo.utils import (
-    cell_to_bboxes, 
-    get_evaluation_bboxes, 
-    save_checkpoint, 
-    load_checkpoint, 
+from .utils import (
+    get_evaluation_bboxes,
+    save_checkpoint,
     check_class_accuracy,
-    get_loaders,
 )
-from plate_detection.yolo.loss import YoloLoss
-from plate_detection.yolo.dataset import YoloDataset
+from .loss import YoloLoss
+from .dataset import YoloDataset
 
 
 @tf.function
@@ -37,7 +32,7 @@ def train_step(x, y, model, optimizer, loss_fn, scaled_anchor):
         losses = []
         for idx in range(3):
             losses.append(loss_fn[idx](out[idx], y[idx]))
-        
+
         total_loss = tf.reduce_sum(losses) + regularization_loss
 
     gradients = tape.gradient(total_loss, model.trainable_variables)
@@ -80,7 +75,7 @@ def main(obj_path):
     dataset = dataset.prefetch(tf.data.AUTOTUNE)
 
     scaled_anchors = (
-        tf.cast(tf.gather(ANCHORS, ANCHORS_MASKS) / 416, dtype=tf.float32) 
+        tf.cast(tf.gather(ANCHORS, ANCHORS_MASKS) / 416, dtype=tf.float32)
         * tf.tile(tf.expand_dims(tf.expand_dims(tf.constant([13, 26, 52], dtype=tf.float32), axis=1), axis=2), [1, 3, 2])
     )
     loss_fn = []
@@ -99,7 +94,7 @@ def main(obj_path):
 
         if epoch != 0 and epoch % 5 == 0:
           np.save("/content/drive/MyDrive/IASR/losses.npy", total_loss)
-    
+
         if False:
             tqdm.write("Validation")
             check_class_accuracy(model, dataset_loader, dataset_loader.config['valid'], scaled_anchors)
@@ -109,8 +104,8 @@ def main(obj_path):
             tqdm.write(f"Mean Average Precision: {mpeval:.4f}")
 
             if SAVE_MODEL:
-                save_checkpoint(model, optimizer, dataset_loader.config['backup'])        
-    
+                save_checkpoint(model, optimizer, dataset_loader.config['backup'])
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Example of using argparse.')

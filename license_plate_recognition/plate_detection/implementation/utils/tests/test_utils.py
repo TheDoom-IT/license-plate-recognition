@@ -1,8 +1,7 @@
 import unittest
 import tensorflow as tf
 import numpy as np
-from plate_detection.utils.utils import calculate_iou, calculate_area_iou, mean_average_precision
-from plate_detection.yolo.utils import non_max_suppression, cell_to_bboxes
+from ...yolo.utils import calculate_iou, calculate_area_iou, mean_average_precision, non_max_suppression, cell_to_bboxes
 
 class TestCalculateIou(unittest.TestCase):
     def setUp(self):
@@ -188,6 +187,6 @@ class TestCellToBBoxes(unittest.TestCase):
 
     def test_inference_mode(self):
         predictions = tf.random.normal([1, 3, 3, 3, 9])
-        anchors = tf.constant([[0.1, 0.2], [0.3, 0.4], [0.6, 0.8]]) 
+        anchors = tf.constant([[0.1, 0.2], [0.3, 0.4], [0.6, 0.8]])
         output = cell_to_bboxes(predictions, anchors, 3, is_training=False)
         self.assertEqual(output.shape.as_list(), [1, 3 * 3 * 3, 6])  # Check output shape, adjust based on actual output

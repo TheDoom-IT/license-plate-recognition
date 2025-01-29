@@ -1,5 +1,5 @@
 import tensorflow as tf
-from plate_detection.yolo.utils import calculate_iou_dt_box
+from .utils import calculate_iou_dt_box
 
 class YoloLoss(tf.keras.losses.Loss):
     def __init__(self, anchors):
