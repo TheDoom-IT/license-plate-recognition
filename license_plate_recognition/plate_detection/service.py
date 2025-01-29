@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 from dataclasses import dataclass
 
@@ -39,6 +40,9 @@ class PlateDetectionService:
         output = self.model(_image)
 
         boxes, _class, conf = get_bboxes(output, threshold=self.threshold)
+        if len(boxes) == 0:
+            print("Image does not contain any License Plate.")
+            sys.exit()
         x1, y1, x2, y2 = get_original_bbox(scale, boxes[0])
 
         plate = image.crop((x1, y1, x2, y2))
