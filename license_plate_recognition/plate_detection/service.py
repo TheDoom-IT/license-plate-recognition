@@ -1,15 +1,9 @@
-import subprocess
 import os
-import keras
-import platform
-from PIL import Image
-
-import shutil
-import json
 import numpy as np
 from dataclasses import dataclass
+
 from plate_detection.blocks import YoloV3
-from plate_detection.yolo.const import NUM_CLASSES, YOLO_LAYERS
+from plate_detection.yolo.const import NUM_CLASSES, YOLO_LAYERS, CONF_THRESHOLD
 from plate_detection.yolo.utils import load_yolo_weights, load_image_as_tf, get_bboxes, get_original_bbox
 
 
@@ -33,15 +27,18 @@ class PlateDetectionService:
             # weights trained on custom YOLOv3 implementation in Python
             model_path = os.path.join(model_base_path, "yolov3-our-implementation.weights.h5")
             self.model.load_weights(model_path)
+            self.threshold = 0.8
         else:
             # weights trained by darknet
             load_yolo_weights(os.path.join(model_base_path, "yolov3-custom_final.weights"), self.model, YOLO_LAYERS)
+            # use smaller threshold for darknet weights
+            self.threshold = 0.5
 
     def detect(self, image) -> tuple[np.array, Box]:
         scale, _image = load_image_as_tf(image)
         output = self.model(_image)
 
-        boxes, _class, conf = get_bboxes(output)
+        boxes, _class, conf = get_bboxes(output, threshold=self.threshold)
         x1, y1, x2, y2 = get_original_bbox(scale, boxes[0])
 
         plate = image.crop((x1, y1, x2, y2))

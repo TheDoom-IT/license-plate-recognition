@@ -2,10 +2,10 @@ import tensorflow as tf
 from tqdm import tqdm
 import pickle
 from plate_detection.yolo.const import (
-    IMAGE_SIZE, 
-    ANCHORS, 
-    ANCHORS_MASKS, 
-    NMS_IOU_THRESH, 
+    IMAGE_SIZE,
+    ANCHORS,
+    ANCHORS_MASKS,
+    NMS_IOU_THRESH,
     CONF_THRESHOLD,
     DARKNET_LAYERS,
     SCALES,
@@ -30,12 +30,12 @@ def get_coordinates(box):
 def calculate_iou(box1, box2):
     box1 = get_coordinates(box1)
     box2 = get_coordinates(box2)
-    
+
     top_left = tf.math.maximum(box1[..., None, :2], box2[..., :2])
     bottom_right = tf.math.minimum(box1[..., None, 2:], box2[..., 2:])
 
     diff = tf.clip_by_value(bottom_right - top_left, 0, 1)
-    
+
     if diff.shape[0] < 2:
         return tf.ones(1)
 
@@ -43,20 +43,20 @@ def calculate_iou(box1, box2):
 
     a1 = (box1[..., 2] - box1[..., 0]) * (box1[..., 3] - box1[..., 1])
     a2 = (box2[..., 2] - box2[..., 0]) * (box2[..., 3] - box2[..., 1])
-    
+
     return intersection / (a1[:, None] + a2 - intersection)
 
 
 def non_max_suppression(predictions, iou_threshold, probability_threshold):
     def nms_single(prediction):
         boxes = tf.convert_to_tensor(prediction)
-        
+
         mask = boxes[:, 1] > probability_threshold
         boxes = tf.boolean_mask(boxes, mask)
 
         indexes = tf.reverse(tf.argsort(boxes[:, 1]), axis=[0])
         boxes = tf.gather(boxes, indexes)
-        
+
         classes = tf.cast(boxes[:, 0], dtype=tf.int32)
         bboxes = boxes[:, 2:]
         ious = calculate_iou(bboxes, bboxes)
@@ -69,11 +69,11 @@ def non_max_suppression(predictions, iou_threshold, probability_threshold):
                 continue
 
             condition = (iou > iou_threshold) & (_class == classes)
-            keep = keep & ~condition        
+            keep = keep & ~condition
 
         return tf.boolean_mask(boxes, keep, axis=0)
 
-    return tf.map_fn(nms_single, predictions, dtype=tf.float32)   
+    return tf.map_fn(nms_single, predictions, dtype=tf.float32)
 
 
 def cell_to_bboxes(predictions, anchors, output_scale, is_inference):
@@ -93,9 +93,9 @@ def cell_to_bboxes(predictions, anchors, output_scale, is_inference):
         score = predictions[..., 4:5]
         _class = predictions[..., 5:6]
 
-    
+
     grid = tf.expand_dims(tf.tile(
-        tf.reshape(tf.range(output_scale, dtype=x.dtype), [1, 1, output_scale, 1]), 
+        tf.reshape(tf.range(output_scale, dtype=x.dtype), [1, 1, output_scale, 1]),
         [predictions.shape[0], output_scale, 1, 3]
     ), axis=-1)
 
@@ -105,7 +105,7 @@ def cell_to_bboxes(predictions, anchors, output_scale, is_inference):
     scale = (1 / output_scale) * scale
 
     return tf.reshape(
-        tf.concat([_class, score, x, y, scale], axis=-1), 
+        tf.concat([_class, score, x, y, scale], axis=-1),
         (predictions.shape[0], num_anchors * output_scale * output_scale, 6)
     )
 
@@ -141,7 +141,7 @@ def get_evaluation_bboxes(
         true_bboxes = tf.convert_to_tensor(cell_to_bboxes(labels[0], tf.gather(anchors, ANCHORS_MASKS[0]), SCALES[0], False))
 
         batch_size = x.shape[0]
-        
+
 
         for idx in range(batch_size):
             im_pred = (predictions[0][idx:idx+1], predictions[1][idx:idx+1], predictions[2][idx:idx+1])
@@ -208,7 +208,7 @@ def check_class_accuracy(model, loader, threshold):
             tot_obj += tf.reduce_sum(tf.cast(obj, tf.int32))
             correct_noobj += tf.reduce_sum(tf.cast(obj_preds[noobj] == tf.cast(y[i][..., 4], tf.bool)[noobj], tf.int32))
             tot_noobj += tf.reduce_sum(tf.cast(noobj, tf.int32))
-        
+
     correct_class = tf.cast(correct_class, tf.float32)
     tot_class_preds = tf.cast(tot_class_preds, tf.float32)
     correct_obj = tf.cast(correct_obj, tf.float32)
@@ -248,13 +248,13 @@ def save_checkpoint(model, optimizer, filename):
 def load_checkpoint(checkpoint_file, model, optimizer, lr):
     print("=> Loading checkpoint")
     model.load_weights(checkpoint_file)
-    
+
     # Load optimizer state
-    
+
     with open(checkpoint_file + '_optimizer.pkl', 'rb') as f:
         opt_config = pickle.load(f)
     optimizer.from_config(opt_config)
-    
+
     # Update learning rate - this requires custom handling based on optimizer type
     if 'learning_rate' in opt_config:
         opt_config['learning_rate'] = lr
@@ -264,7 +264,7 @@ def load_checkpoint(checkpoint_file, model, optimizer, lr):
 
 def read_darknet_weights(file_path, header_size=5):
     file = open(file_path, 'rb')
-    
+
     header = np.fromfile(file, dtype=np.int32, count=header_size)
 
     return header, file
@@ -287,14 +287,14 @@ def load_weights(layers, weights):
         else:
             bn_weights = np.fromfile(weights, dtype=np.float32, count=4 * filters)
             bn_weights = bn_weights.reshape((4, filters))[[1, 0, 2, 3]]
-        
+
         conv_shape = (filters, input_dim, kernel_size, kernel_size)
         conv_weights = np.fromfile(weights, dtype=np.float32, count=np.prod(conv_shape))
         conv_weights = conv_weights.reshape(conv_shape).transpose([2, 3, 1, 0])
 
         if layer['bn'] is None:
             layer['cn'].set_weights([conv_weights, conv_bias])
-        else:  
+        else:
             layer['cn'].set_weights([conv_weights])
             layer['bn'].set_weights(bn_weights)
 
@@ -309,7 +309,7 @@ def load_yolo_weights(file_path, model, yolo_layers):
         layer = model.get_layer(layer_name)
         if layer.name.find("Conv2D") != -1:
             layers.append(get_conv_layer(layer))
-            
+
         if layer.name.find("Residual") != -1:
             for l in layer.layers:
                 cn_layer1 = l.layers[0]
@@ -324,7 +324,7 @@ def load_yolo_weights(file_path, model, yolo_layers):
 
             layers.append(get_conv_layer(cn_layer1))
             layers.append(get_conv_layer(cn_layer2))
-    
+
     load_weights(layers, weights)
     print("Successfull data write")
 
@@ -334,7 +334,7 @@ def load_image_as_tf(image):
         image = tf.convert_to_tensor(image)
 
         return image.shape[:2].as_list(), tf.image.resize(tf.expand_dims(image, axis=0) / 255, (IMAGE_SIZE, IMAGE_SIZE))
-    elif isinstance(image, str):  
+    elif isinstance(image, str):
         image = tf.image.decode_image(open(image, 'rb').read(), channels=3)
         return image.shape[:2].as_list(), tf.image.resize(
             tf.expand_dims(image, axis=0) / 255, (IMAGE_SIZE, IMAGE_SIZE),
@@ -349,9 +349,7 @@ def get_original_bbox(scale, bbox):
     return np.array([x1 * wscale, y1 * hscale, x2 * wscale, y2 * hscale], dtype=np.int32)
 
 
-
-
-def get_bboxes(outputs, is_inference=True):
+def get_bboxes(outputs, is_inference=True, threshold=CONF_THRESHOLD):
     anchors = np.array(ANCHORS, dtype=np.float32) / IMAGE_SIZE
     _outputs = []
     for idx, output in enumerate(outputs):
@@ -359,8 +357,8 @@ def get_bboxes(outputs, is_inference=True):
             cell_to_bboxes(output, anchors[ANCHORS_MASKS[idx]], output.shape[2], True)
         )
     _outputs = tf.concat(_outputs, axis=1)
-    
-    nms = non_max_suppression(_outputs, iou_threshold=NMS_IOU_THRESH, probability_threshold=CONF_THRESHOLD)
+
+    nms = non_max_suppression(_outputs, iou_threshold=NMS_IOU_THRESH, probability_threshold=threshold)
 
     if is_inference:
         nms = tf.reshape(nms, nms.shape[1:])
@@ -372,7 +370,7 @@ def get_bboxes(outputs, is_inference=True):
             box.append([x - w/2, y - h/2, x + w/2, y + h/2])
             _class.append(int(c))
             score.append(s)
-        
+
         box = np.asarray(np.array(box) * IMAGE_SIZE, dtype=np.int32)
         _class = np.array(_class, dtype=np.int32)
         score = np.array(score, dtype=np.float32)
@@ -380,7 +378,7 @@ def get_bboxes(outputs, is_inference=True):
         return box, _class, score
     else:
         return nms
-    
+
 
 
 
@@ -397,7 +395,7 @@ def calculate_iou_dt_box(box1, box2, box_format="midpoint"):
         b1_x1, b1_y1, b1_x2, b1_y2 = box1[..., 0:1], box1[..., 1:2], box1[..., 2:3], box1[..., 3:4]
         b2_x1, b2_y1, b2_x2, b2_y2 = box2[..., 0:1], box2[..., 1:2], box2[..., 2:3], box2[..., 3:4]
 
-    
+
     x1 = tf.math.maximum(b1_x1, b2_x1)
     y1 = tf.math.maximum(b1_y1, b2_y1)
     x2 = tf.math.minimum(b1_x2, b2_x2)
@@ -426,11 +424,11 @@ def mean_average_precision(predictions, true_values, iou_threshold, num_classes=
 
         true_value_mask = true_values[..., 1] == float(_class)
         ground_truths = true_values[true_value_mask]
-        
+
         amount_bboxes = Counter(ground_truths[:, 0].astype(int))
         for key, value in amount_bboxes.items():
             amount_bboxes[key] = np.zeros(amount_bboxes[key])
-        
+
         detection_idxs = np.argsort(detections[:, 2])[::-1]
         detections = detections[detection_idxs]
         true_positives = np.zeros(len(detections))
@@ -459,7 +457,7 @@ def mean_average_precision(predictions, true_values, iou_threshold, num_classes=
                     false_positives[i] = 1
             else:
                 false_positives[i] = 1
-        
+
         true_positive_cumsum = np.cumsum(true_positives, axis=0)
         false_positives_cumsum = np.cumsum(false_positives, axis=0)
 
