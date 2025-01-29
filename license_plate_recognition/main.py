@@ -43,15 +43,28 @@ def show_result(img: cv2.typing.MatLike, box: Box, plate: np.ndarray, characters
     plt.show()
 
 
+def handle_args(params: list[str]) -> [str, bool]:
+    return sys.argv[1], "--our-implementation" in params
+
+
+HELP = """
+Usage: python main.py <filename>
+
+Options:
+    --our-implementation    Use YOLOv3 weights trained on custom YOLOv3 implementation in Python.
+                            By default, YOLOv3 weights trained by darknet are used.
+"""
+
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print("Usage: python main.py <filename>")
+        print(HELP)
         sys.exit(1)
 
-    filename = sys.argv[1]
+    filename, use_our_implementation = handle_args(sys.argv)
+
     img = read_file(filename)
 
-    plate_detection_service = PlateDetectionService()
+    plate_detection_service = PlateDetectionService(use_our_implementation)
     segmentation_service = SegmentationService()
     recognition_service = RecognitionService()
 

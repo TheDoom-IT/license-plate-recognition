@@ -34,6 +34,20 @@ license-plate-recognition/
 |-- pyproject.toml
 ```
 
+### Plate detection weights
+There are two different weights available for plate detection:
+- `yolov3-custom_final.weights` - trained using [darknet](https://github.com/pjreddie/darknet)
+- `yolov3-our-implementation.weights.h5` - trained on custom YOLOv3 implementation in Python (available in the repository)
+
+Current implementation supports both weights. By default, the `yolov3-custom_final.weights` is used, because
+it provides much better results. The `yolov3-our-implementation.weights.h5` can be also used as well by providing
+`--our-implementation` flag to the application. Example:
+```bash
+poetry run python -m license_plate_recognition.main example1.jpg --our-implementation
+```
+However, its performance is much worse than the original weights and segmentation part
+may fail if plate is not detected correctly.
+
 ## Running the project
 
 The application can be run using the following command:
