@@ -7,7 +7,8 @@ from plate_detection.yolo.const import (
     ANCHORS_MASKS, 
     NMS_IOU_THRESH, 
     CONF_THRESHOLD,
-    DARKNET_LAYERS
+    DARKNET_LAYERS,
+    SCALES,
 )
 import numpy as np
 from PIL.Image import Image
@@ -121,93 +122,103 @@ def calculate_area_iou(box1, box2):
 def get_evaluation_bboxes(
     loader,
     model,
-    iou_threshold,
-    anchors,
     threshold,
 ):
     # Ensure model is in evaluation mode
     model.trainable = False
 
-    all_pred_boxes = []
-    all_true_boxes = []
+    predicted_boxes = []
+    true_boxes = []
     train_idx = 0
+
+    anchors = tf.convert_to_tensor(ANCHORS, dtype=tf.float32) / IMAGE_SIZE
 
     for batch_idx, (x, labels) in enumerate(tqdm(loader)):
         predictions = model(x, training=False)
 
+        #predicted_boxes = get_bboxes(predictions, is_inference=False)
+        true_bboxes = tf.convert_to_tensor(cell_to_bboxes(labels[0], tf.gather(anchors, ANCHORS_MASKS[0]), SCALES[0], False))
+
         batch_size = x.shape[0]
-        bboxes = [[] for _ in range(batch_size)]
-
-        for i in range(3):  # Assuming there are 3 scales as in YOLO
-            S = predictions[i].shape[2]
-            anchor = tf.convert_to_tensor(anchors[i]) * S
-            boxes_scale_i = cell_to_bboxes(predictions[i], anchor, S=S, is_preds=True)
-            for idx, box in enumerate(boxes_scale_i):
-                if len(bboxes[idx]) == 0:
-                    bboxes[idx] = box
-                else:
-                    bboxes[idx] = tf.concat(bboxes[idx], box, axis=0)
-
-        # Convert labels for true boxes
-        true_bboxes = cell_to_bboxes(labels[2], anchor, S=S, is_preds=False)
+        
 
         for idx in range(batch_size):
-            nms_boxes = non_max_suppression(
-                bboxes[idx], 
-                iou_threshold=iou_threshold, 
-                threshold=threshold
-            )
+            im_pred = (predictions[0][idx:idx+1], predictions[1][idx:idx+1], predictions[2][idx:idx+1])
+            if isinstance(predicted_boxes, list):
+                nms = tf.convert_to_tensor(get_bboxes(im_pred, is_inference=False))
+                nms = tf.reshape(nms, [nms.shape[1], nms.shape[2]])
+                if nms.shape[0] > 0:
+                    predicted_boxes = tf.concat([tf.cast(tf.fill((nms.shape[0], 1), train_idx), dtype=tf.float32), nms], axis=-1)
+            else:
+                nms = tf.convert_to_tensor(get_bboxes(im_pred, is_inference=False))
+                nms = tf.reshape(nms, [nms.shape[1], nms.shape[2]])
+                if nms.shape[0] > 0:
+                    nms = tf.concat([tf.cast(tf.fill((nms.shape[0], 1), train_idx),  dtype=tf.float32), nms], axis=-1)
+                    predicted_boxes = tf.concat([predicted_boxes, nms], axis=0)
 
-            for nms_box in nms_boxes:
-                val = tf.concat([tf.fill((nms_box.shape[0], 1), train_idx), nms_box], axis=1)
-                if len(all_pred_boxes) == 0:
-                    all_pred_boxes = val
-                else:
-                    all_pred_boxes = tf.concat([all_pred_boxes, val], axis=0)
-
-            for box in true_bboxes[idx]:
-                if box[1] > threshold:
-                    val = tf.concat([tf.fill((box.shape[0], 1), train_idx), nms_box], axis=1)
-                    if len(all_true_boxes) == 0:
-                        all_true_boxes = val
-                    else:
-                        all_true_boxes = tf.concat([all_true_boxes, val], axis=0)
+            if isinstance(true_boxes, list):
+                true_box = true_bboxes[idx:idx+1]
+                mask = true_box[..., 1] > threshold
+                true_box = true_box[mask]
+                box_sum = tf.reduce_sum(true_box, axis=1)
+                _, indices = tf.unique(box_sum)
+                indices, _ = tf.unique(indices)
+                true_box = tf.gather(true_box, indices)
+                if true_box.shape[0] > 0:
+                    true_boxes = tf.concat([tf.cast(tf.fill((true_box.shape[0], 1), train_idx), dtype=tf.float32), true_box], axis=-1)
+            else:
+                true_box = true_bboxes[idx]
+                mask = true_box[..., 1] > threshold
+                true_box = true_box[mask]
+                box_sum = tf.reduce_sum(true_box, axis=1)
+                _, indices = tf.unique(box_sum)
+                indices, _ = tf.unique(indices)
+                true_box = tf.gather(true_box, indices)
+                if true_box.shape[0] > 0:
+                    true_box = tf.concat([tf.cast(tf.fill((true_box.shape[0], 1), train_idx),  dtype=tf.float32), true_box], axis=-1)
+                    true_boxes = tf.concat([true_boxes, true_box], axis=0)
 
             train_idx += 1
 
     # Set model back to training mode
     model.trainable = True
 
-    return all_pred_boxes, all_true_boxes
+    return predicted_boxes, true_boxes
 
 def check_class_accuracy(model, loader, threshold):
-    model.trainable = False  # Ensure the model is in evaluation mode
-
     tot_class_preds, correct_class = 0, 0
     tot_noobj, correct_noobj = 0, 0
     tot_obj, correct_obj = 0, 0
+    model.trainable = False
 
     for idx, (x, y) in enumerate(tqdm(loader)):
         # Forward pass
         predictions = model(x, training=False)
 
         for i in range(3):  # Assuming model outputs at 3 scales as in YOLO
-            obj = y[i][..., 0] == 1
-            noobj = y[i][..., 0] == 0
+            obj = y[i][..., 4] == 1
+            noobj = y[i][..., 4] == 0
 
-            correct_class += tf.reduce_sum(tf.cast(tf.argmax(predictions[i][..., 5:], axis=-1) == tf.cast(y[i][..., 5], tf.int64), tf.int32))
+            correct_class += tf.reduce_sum(tf.cast(tf.argmax(predictions[i][obj][..., 5:], axis=-1) == tf.cast(y[i][obj][..., 5], tf.int64), tf.int32))
             tot_class_preds += tf.reduce_sum(tf.cast(obj, tf.int32))
 
-            obj_preds = tf.sigmoid(predictions[i][..., 0]) > threshold
-            correct_obj += tf.reduce_sum(tf.cast(obj_preds[obj] == y[i][..., 0][obj], tf.int32))
+            obj_preds = tf.sigmoid(predictions[i][..., 4]) > threshold
+            correct_obj += tf.reduce_sum(tf.cast(obj_preds[obj] == tf.cast(y[i][..., 4], tf.bool)[obj], tf.int32))
             tot_obj += tf.reduce_sum(tf.cast(obj, tf.int32))
-            correct_noobj += tf.reduce_sum(tf.cast(obj_preds[noobj] == y[i][..., 0][noobj], tf.int32))
+            correct_noobj += tf.reduce_sum(tf.cast(obj_preds[noobj] == tf.cast(y[i][..., 4], tf.bool)[noobj], tf.int32))
             tot_noobj += tf.reduce_sum(tf.cast(noobj, tf.int32))
+        
+    correct_class = tf.cast(correct_class, tf.float32)
+    tot_class_preds = tf.cast(tot_class_preds, tf.float32)
+    correct_obj = tf.cast(correct_obj, tf.float32)
+    tot_obj = tf.cast(tot_obj, tf.float32)
+    correct_noobj = tf.cast(correct_noobj, tf.float32)
+    tot_noobj = tf.cast(tot_noobj, tf.float32)
+    model.trainable = True
 
     print(f"Class accuracy is: {(correct_class / (tot_class_preds + 1e-16)) * 100:.2f}%")
     print(f"No obj accuracy is: {(correct_noobj / (tot_noobj + 1e-16)) * 100:.2f}%")
     print(f"Obj accuracy is: {(correct_obj / (tot_obj + 1e-16)) * 100:.2f}%")
-    model.trainable = True  # Set the model back to training mode
 
 
 
@@ -339,7 +350,7 @@ def get_original_bbox(scale, bbox):
 
 
 
-def get_bboxes(outputs):
+def get_bboxes(outputs, is_inference=True):
     anchors = np.array(ANCHORS, dtype=np.float32) / IMAGE_SIZE
     _outputs = []
     for idx, output in enumerate(outputs):
@@ -349,22 +360,26 @@ def get_bboxes(outputs):
     _outputs = tf.concat(_outputs, axis=1)
     
     nms = non_max_suppression(_outputs, iou_threshold=NMS_IOU_THRESH, probability_threshold=CONF_THRESHOLD)
-    nms = tf.reshape(nms, nms.shape[1:])
-    
-    box, _class, score = ([], [], [])
 
-    for pred in nms:
-        # [class, score, x_center, y_center, width, height]
-        c, s, x, y, w, h = pred
-        box.append([x - w/2, y - h/2, x + w/2, y + h/2])
-        _class.append(int(c))
-        score.append(s)
-    
-    box = np.asarray(np.array(box) * IMAGE_SIZE, dtype=np.int32)
-    _class = np.array(_class, dtype=np.int32)
-    score = np.array(score, dtype=np.float32)
+    if is_inference:
+        nms = tf.reshape(nms, nms.shape[1:])
+        box, _class, score = ([], [], [])
 
-    return box, _class, score
+        for pred in nms:
+            # [class, score, x_center, y_center, width, height]
+            c, s, x, y, w, h = pred
+            box.append([x - w/2, y - h/2, x + w/2, y + h/2])
+            _class.append(int(c))
+            score.append(s)
+        
+        box = np.asarray(np.array(box) * IMAGE_SIZE, dtype=np.int32)
+        _class = np.array(_class, dtype=np.int32)
+        score = np.array(score, dtype=np.float32)
+
+        return box, _class, score
+    else:
+        return nms
+
 
 
 def calculate_iou_dt_box(box1, box2, box_format="midpoint"):
@@ -396,56 +411,69 @@ def calculate_iou_dt_box(box1, box2, box_format="midpoint"):
     return intersection / union
 
 
-def mean_average_precision(predictions, true_values, iou_threshold, box_format="midpoint", num_classes=20):
+def mean_average_precision(predictions, true_values, iou_threshold, num_classes=20):
     average_precision = []
     epsilon = 1e-6
 
+    predictions = predictions.numpy()
+    true_values = true_values.numpy()
+
     for _class in range(num_classes):
-        detections = [prediction for prediction in predictions if prediction[1] == _class]
-        ground_truths = [true_value for true_value in true_values if true_value[1] == _class]
+        detection_mask =predictions[..., 1] == float(_class)
+        detections = predictions[detection_mask]
 
-        amount_bboxes = Counter([gt[0] for gt in ground_truths])
+        true_value_mask = true_values[..., 1] == float(_class)
+        ground_truths = true_values[true_value_mask]
+        #detections = [prediction for prediction in predictions if prediction[1] == _class]
+        #ground_truths = [true_value for true_value in true_values if true_value[1] == _class]
+
+        amount_bboxes = Counter(ground_truths[:, 0].astype(int))
+        # train_ids, _ freq = tf.unique_with_counts(ground_truths[..., 0])
         for key, value in amount_bboxes.items():
-            amount_bboxes[key] = np.zeros(value)
-
-        detections.sort(key=lambda x: x[2], reverse=True)
-        true_positives = np.zeros((len(detections)))
-        false_positives = np.zeros((len(detections)))
+            amount_bboxes[key] = np.zeros(amount_bboxes[key])
+        
+        detection_idxs = np.argsort(detections[:, 2])[::-1]
+        detections = detections[detection_idxs]
+        #detections.sort(key=lambda x: x[2], reverse=True)
+        true_positives = np.zeros(len(detections))
+        false_positives = np.zeros(len(detections))
         total_true_bboxes = len(ground_truths)
 
         for i, detection in enumerate(detections):
-            ground_truth_im= [gt for gt in ground_truths if gt[0] == detection[0]]
+            gt_mask = ground_truths[:, 0] == detection[0]
+            ground_truth_im = ground_truths[gt_mask]
+            
+            #ground_truth_im= [gt for gt in ground_truths if gt[0] == detection[0]]
 
             best_iou = 0
             best_gt_idx = -1
 
             for idx, gt in enumerate(ground_truth_im):
-                iou = calculate_iou_dt_box(np.array(detection[3:]), np.array(gt[3:]), box_format)
+                iou = calculate_iou_dt_box(tf.convert_to_tensor(detection[3:]), tf.convert_to_tensor(gt[3:]))
 
                 if iou > best_iou:
-                    best_iou = iou
+                    best_iou = iou.numpy()
                     best_gt_idx = idx
 
             if best_iou > iou_threshold:
-                if amount_bboxes[detection[0]][best_gt_idx] == 0:
+                if amount_bboxes[int(detection[0])][best_gt_idx] == 0:
                     true_positives[i] = 1
-                    amount_bboxes[detection[0]][best_gt_idx] = 1
+                    amount_bboxes[int(detection[0])][best_gt_idx] = 1
                 else:
                     false_positives[i] = 1
             else:
                 false_positives[i] = 1
-            
+        
         true_positive_cumsum = np.cumsum(true_positives, axis=0)
         false_positives_cumsum = np.cumsum(false_positives, axis=0)
 
         recall = true_positive_cumsum / (total_true_bboxes + epsilon)
-        precision = np.divide(true_positive_cumsum, (true_positive_cumsum + false_positives_cumsum + epsilon))
-        precision = np.concat((np.array([1]), precision))
-        recall = np.concat((np.array([0]), recall))
+        precision = true_positive_cumsum / (true_positive_cumsum + false_positives_cumsum + epsilon)
+        precision = np.concatenate((tf.constant([1]), precision))
+        recall = np.concatenate((tf.constant([0]), recall))
 
         average_precision.append(np.trapezoid(precision, recall))
 
-    
     return sum(average_precision) / len(average_precision)
 
 

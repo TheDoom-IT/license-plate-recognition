@@ -50,7 +50,7 @@ class YoloDataset:
     def get_image(self, image_path):
         # To be removed
         image_path = "."+image_path
-        return np.array(Image.open(os.path.join(self.config["base_dir"], image_path)).convert("RGB"), dtype=np.float32) /  IMAGE_SIZE
+        return np.array(Image.open(os.path.join(self.config["base_dir"], image_path)).convert("RGB"), dtype=np.float32) /  255
 
     def get_label(self, label_path):
         # To be removed
@@ -99,7 +99,7 @@ class YoloDataset:
                 if not anchor_taken and not has_anchors[scale_idx]:
                     targets[scale_idx][j, i, anchor_on_scale, 4] = 1
                     x_cell, y_cell = S*x - i, S*y - j
-                    width_cell, height_cell = (w * S, h * S)
+                    width_cell, height_cell = (w, h)
 
                     box_coords = np.array([x_cell, y_cell, width_cell, height_cell])
                     targets[scale_idx][j, i, anchor_on_scale, :4] = box_coords 
