@@ -3,9 +3,9 @@ import sys
 import numpy as np
 from dataclasses import dataclass
 
-from plate_detection.blocks import YoloV3
-from plate_detection.yolo.const import NUM_CLASSES, YOLO_LAYERS, CONF_THRESHOLD
-from plate_detection.yolo.utils import load_yolo_weights, load_image_as_tf, get_bboxes, get_original_bbox
+from .implementation.blocks import YoloV3
+from .implementation.yolo.const import NUM_CLASSES, YOLO_LAYERS
+from .implementation.yolo.utils import load_yolo_weights, load_image_as_tf, get_bboxes, get_original_bbox
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

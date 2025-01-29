@@ -1,5 +1,5 @@
 import tensorflow as tf
-from plate_detection.yolo.const import IMAGE_SIZE
+from .yolo.const import IMAGE_SIZE
 import logging
 
 # Setup logging configuration

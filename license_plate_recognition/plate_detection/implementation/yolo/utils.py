@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tqdm import tqdm
 import pickle
-from plate_detection.yolo.const import (
+from .const import (
     IMAGE_SIZE,
     ANCHORS,
     ANCHORS_MASKS,
