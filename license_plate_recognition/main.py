@@ -15,7 +15,10 @@ def read_file(filename: str) -> ImageFile:
         print(f"File '{filename}' does not exist")
         sys.exit(1)
 
-    return Image.open(filename)
+    image = Image.open(filename)
+    # convert to RGB to make sure that only 3 layers are used (PNG has 4 layers)
+    # plate detection part requires 3 layers only
+    return image.convert('RGB')
 
 
 def show_result(img: cv2.typing.MatLike, box: Box, plate: np.ndarray, characters: list[np.ndarray], plate_number: str):
